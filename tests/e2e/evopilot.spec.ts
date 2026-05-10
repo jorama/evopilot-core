@@ -35,7 +35,7 @@ test("founder workflow: add mvp, add task, generate prompt, change status, view 
   await expect(page.getByText("Generated Fix Prompt")).toBeVisible();
   await expect(page.getByText("Do NOT auto-deploy to production.")).toBeVisible();
 
-  await page.getByLabel("status").selectOption("Investigating");
+  await page.getByLabel("Status").selectOption("Investigating");
   await page.getByRole("button", { name: "Update Status" }).click();
   await expect(page.locator("span", { hasText: "Investigating" }).first()).toBeVisible();
 
