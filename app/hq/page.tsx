@@ -79,7 +79,12 @@ export default async function FounderIntelligencePage() {
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
               {runs.slice(0, 10).map((run) => (
                 <li key={run.id} className="rounded-lg border border-slate-200 p-3">
-                  <p className="font-semibold text-slate-900">{run.agent_id} · {run.status}</p>
+                  <p
+                    className="font-semibold text-slate-900"
+                    aria-label={`${run.agent_id} status ${run.status}`}
+                  >
+                    {run.agent_id} · {run.status}
+                  </p>
                   <p className="mt-1 text-xs text-slate-500">{new Date(run.started_at).toLocaleString()}</p>
                 </li>
               ))}

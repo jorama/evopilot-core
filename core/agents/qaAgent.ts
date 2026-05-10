@@ -14,12 +14,12 @@ export const qaAgent: AgentDefinition = {
       normalizedLogs.includes("typeerror") ||
       normalizedLogs.includes("cannot read properties") ||
       normalizedLogs.includes("is not a function");
-    const failureType =
-      normalizedLogs.includes("timeout") || normalizedLogs.includes("timed out")
-        ? "timeout"
-        : hasTypeErrorSignal
-          ? "type-error"
-          : "assertion";
+    let failureType: "timeout" | "type-error" | "assertion" = "assertion";
+    if (normalizedLogs.includes("timeout") || normalizedLogs.includes("timed out")) {
+      failureType = "timeout";
+    } else if (hasTypeErrorSignal) {
+      failureType = "type-error";
+    }
 
     return {
       summary: `Classified QA failure as ${failureType} and produced a remediation suggestion.`,
