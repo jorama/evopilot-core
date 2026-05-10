@@ -9,10 +9,11 @@ export const qaAgent: AgentDefinition = {
   subscribedEvents: ["test.failed", "deployment.failed"],
   async execute(context) {
     const logs = String(context.payload?.logs ?? "");
+    const normalizedLogs = logs.toLowerCase();
     const failureType =
-      logs.toLowerCase().includes("timeout") || logs.toLowerCase().includes("timed out")
+      normalizedLogs.includes("timeout") || normalizedLogs.includes("timed out")
         ? "timeout"
-        : logs.toLowerCase().includes("type")
+        : normalizedLogs.includes("type")
           ? "type-error"
           : "assertion";
 

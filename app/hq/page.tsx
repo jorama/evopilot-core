@@ -21,9 +21,26 @@ export default async function FounderIntelligencePage() {
   const openFailures = globalContext.recentFailures.length;
   const recentDeployments = globalContext.recentDeployments.length;
   const suggestedActions = [
-    ...globalContext.recentFailures.slice(0, 2).map((task) => `Prioritize fix strategy for: ${task.title}`),
-    ...(enabledAgents < agents.length ? ["Review disabled agents and confirm intended coverage"] : []),
-    ...(events.length === 0 ? ["Start publishing event signals from workflows"] : []),
+    ...globalContext.recentFailures.slice(0, 2).map((task) => ({
+      id: `failure-${task.id}`,
+      text: `Prioritize fix strategy for: ${task.title}`,
+    })),
+    ...(enabledAgents < agents.length
+      ? [
+          {
+            id: "agent-coverage",
+            text: "Review disabled agents and confirm intended coverage",
+          },
+        ]
+      : []),
+    ...(events.length === 0
+      ? [
+          {
+            id: "event-bootstrap",
+            text: "Start publishing event signals from workflows",
+          },
+        ]
+      : []),
   ].slice(0, 5);
 
   return (
@@ -76,9 +93,9 @@ export default async function FounderIntelligencePage() {
             <p className="mt-2 text-sm text-slate-600">No suggestions yet.</p>
           ) : (
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
-              {suggestedActions.map((action, index) => (
-                <li key={`${action}-${index}`} className="rounded-lg border border-slate-200 p-3">
-                  {action}
+              {suggestedActions.map((action) => (
+                <li key={action.id} className="rounded-lg border border-slate-200 p-3">
+                  {action.text}
                 </li>
               ))}
             </ul>
