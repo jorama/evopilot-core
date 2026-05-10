@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { updateTaskStatusAction } from "@/app/actions";
 import { EmptyState } from "@/components/empty-state";
+import { GitHubIssueStatusBadge } from "@/components/github-issue-status-badge";
 import { PageHeader } from "@/components/page-header";
 import { SeverityBadge } from "@/components/severity-badge";
 import { StatusBadge } from "@/components/status-badge";
@@ -34,6 +35,7 @@ export default async function TasksPage() {
                   <th className="px-4 py-3">Project</th>
                   <th className="px-4 py-3">Severity</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">GitHub Issue</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Source</th>
                   <th className="px-4 py-3">Created</th>
@@ -50,6 +52,21 @@ export default async function TasksPage() {
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={task.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1">
+                        <GitHubIssueStatusBadge status={task.github_issue_status} />
+                        {task.github_issue_url ? (
+                          <a
+                            href={task.github_issue_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-slate-700 underline"
+                          >
+                            #{task.github_issue_number} link
+                          </a>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-700">{task.type}</td>
                     <td className="px-4 py-3 text-slate-700">{task.source}</td>

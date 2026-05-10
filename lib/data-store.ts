@@ -1,6 +1,8 @@
+import { buildIssueBody, buildIssueLabels, buildIssueTitle, createGitHubIssue, ensureRepoLabels, updateGitHubIssue } from "./github";
 import { buildFixPrompt } from "./fix-prompt";
 import { createSupabaseServerClient, isSupabaseConfigured } from "./supabase";
 import type {
+  GitHubIssueMode,
   ImprovementTask,
   ImprovementTaskWithProject,
   Project,
@@ -20,6 +22,8 @@ const defaultProjectValues = {
   playwright_command: "npx playwright test",
   sentry_info: "",
   notes: "",
+  github_owner: "",
+  github_repo: "",
 } as const;
 
 const defaultTaskValues = {
@@ -35,6 +39,10 @@ const defaultTaskValues = {
   logs: "",
   screenshot_url: "",
   fix_prompt: "",
+  github_issue_url: "",
+  github_issue_number: null,
+  github_issue_created_at: "",
+  github_issue_status: "Not Created",
 } as const;
 
 const memoryStore: Store = { projects: [], tasks: [] };
@@ -43,8 +51,46 @@ function getMemoryStore() {
   return memoryStore;
 }
 
-function normalizeProject(row: Partial<Project>): Project {
+function parseGithubRepoFromUrl(repoUrl: string) {
+  const normalized = repoUrl.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const httpsMatch = normalized.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i);
+  if (httpsMatch) {
+    return { owner: httpsMatch[1], repo: httpsMatch[2] };
+  }
+
+  const sshMatch = normalized.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i);
+  if (sshMatch) {
+    return { owner: sshMatch[1], repo: sshMatch[2] };
+  }
+
+  return null;
+}
+
+function withGithubRepoDetails(project: Project): Project {
+  if (project.github_owner && project.github_repo) {
+    return project;
+  }
+
+  const parsed = parseGithubRepoFromUrl(project.repo_url);
+
+  if (!parsed) {
+    return project;
+  }
+
   return {
+    ...project,
+    github_owner: parsed.owner,
+    github_repo: parsed.repo,
+  };
+}
+
+function normalizeProject(row: Partial<Project>): Project {
+  return withGithubRepoDetails({
     id: row.id ?? crypto.randomUUID(),
     name: row.name ?? "",
     repo_url: row.repo_url ?? defaultProjectValues.repo_url,
@@ -54,8 +100,10 @@ function normalizeProject(row: Partial<Project>): Project {
     playwright_command: row.playwright_command ?? defaultProjectValues.playwright_command,
     sentry_info: row.sentry_info ?? defaultProjectValues.sentry_info,
     notes: row.notes ?? defaultProjectValues.notes,
+    github_owner: row.github_owner ?? defaultProjectValues.github_owner,
+    github_repo: row.github_repo ?? defaultProjectValues.github_repo,
     created_at: row.created_at ?? new Date().toISOString(),
-  };
+  });
 }
 
 function normalizeTask(row: Partial<ImprovementTask>): ImprovementTask {
@@ -75,9 +123,25 @@ function normalizeTask(row: Partial<ImprovementTask>): ImprovementTask {
     logs: row.logs ?? defaultTaskValues.logs,
     screenshot_url: row.screenshot_url ?? defaultTaskValues.screenshot_url,
     fix_prompt: row.fix_prompt ?? defaultTaskValues.fix_prompt,
+    github_issue_url: row.github_issue_url ?? defaultTaskValues.github_issue_url,
+    github_issue_number:
+      typeof row.github_issue_number === "number"
+        ? row.github_issue_number
+        : defaultTaskValues.github_issue_number,
+    github_issue_created_at:
+      row.github_issue_created_at ?? defaultTaskValues.github_issue_created_at,
+    github_issue_status:
+      (row.github_issue_status as ImprovementTask["github_issue_status"]) ??
+      defaultTaskValues.github_issue_status,
     created_at: row.created_at ?? new Date().toISOString(),
     updated_at: row.updated_at ?? new Date().toISOString(),
   };
+}
+
+function assertRepoConfigured(project: Project) {
+  if (!project.github_owner || !project.github_repo) {
+    throw new Error("Invalid repository URL. Provide a valid GitHub repo URL in the project settings.");
+  }
 }
 
 export async function listProjects() {
@@ -111,6 +175,8 @@ export async function createProject(input: Partial<Project>) {
         playwright_command: payload.playwright_command,
         sentry_info: payload.sentry_info,
         notes: payload.notes,
+        github_owner: payload.github_owner,
+        github_repo: payload.github_repo,
       })
       .select("*")
       .single();
@@ -199,6 +265,10 @@ export async function createTask(input: Partial<ImprovementTask>) {
         logs: payload.logs,
         screenshot_url: payload.screenshot_url,
         fix_prompt: payload.fix_prompt,
+        github_issue_url: payload.github_issue_url,
+        github_issue_number: payload.github_issue_number,
+        github_issue_created_at: payload.github_issue_created_at || null,
+        github_issue_status: payload.github_issue_status,
       })
       .select("*")
       .single();
@@ -300,6 +370,92 @@ export async function generateAndSaveFixPrompt(taskId: string) {
     ...store.tasks[index],
     fix_prompt: fixPrompt,
     status: "Fix Prompt Generated",
+    updated_at: new Date().toISOString(),
+  };
+
+  return store.tasks[index];
+}
+
+export async function createOrSyncGitHubIssue(taskId: string, mode: GitHubIssueMode) {
+  const task = await getTaskById(taskId);
+
+  if (!task) {
+    throw new Error("Task not found");
+  }
+
+  const project = await getProjectById(task.project_id);
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  assertRepoConfigured(project);
+
+  if (mode === "create" && task.github_issue_url.trim()) {
+    throw new Error("Duplicate issue attempt blocked. Use Update Issue or Recreate Issue.");
+  }
+
+  if (mode === "update" && !task.github_issue_number) {
+    throw new Error("No existing GitHub issue found. Create one first.");
+  }
+
+  const title = buildIssueTitle(task);
+  const body = buildIssueBody(project, task);
+  const labels = buildIssueLabels(task);
+
+  await ensureRepoLabels(project.github_owner, project.github_repo, labels);
+
+  const issue =
+    mode === "update"
+      ? await updateGitHubIssue({
+          owner: project.github_owner,
+          repo: project.github_repo,
+          issueNumber: task.github_issue_number as number,
+          title,
+          body,
+          labels,
+        })
+      : await createGitHubIssue({
+          owner: project.github_owner,
+          repo: project.github_repo,
+          title,
+          body,
+          labels,
+        });
+
+  const githubIssueStatus = mode === "update" ? "Updated" : "Created";
+
+  if (isSupabaseConfigured) {
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("improvement_tasks")
+      .update({
+        github_issue_url: issue.html_url,
+        github_issue_number: issue.number,
+        github_issue_created_at: issue.created_at,
+        github_issue_status: githubIssueStatus,
+      })
+      .eq("id", task.id)
+      .select("*")
+      .single();
+
+    if (error) throw new Error(error.message);
+    return normalizeTask(data);
+  }
+
+  const store = getMemoryStore();
+  const index = store.tasks.findIndex((item) => item.id === task.id);
+
+  if (index === -1) {
+    throw new Error("Task not found");
+  }
+
+  store.tasks[index] = {
+    ...store.tasks[index],
+    github_issue_url: issue.html_url,
+    github_issue_number: issue.number,
+    github_issue_created_at: issue.created_at,
+    github_issue_status: githubIssueStatus,
     updated_at: new Date().toISOString(),
   };
 

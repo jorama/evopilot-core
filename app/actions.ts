@@ -4,22 +4,27 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { TASK_STATUS_OPTIONS } from "@/lib/constants";
 import {
+  createOrSyncGitHubIssue,
   createProject,
   createTask,
   generateAndSaveFixPrompt,
   updateTaskStatus,
 } from "@/lib/data-store";
-import type { ActionState } from "@/lib/types";
+import type { ActionState, GitHubIssueMode } from "@/lib/types";
 
 const initialActionState: ActionState = {
   success: false,
   message: "",
 };
 
+function isRedirectError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "digest" in error);
+}
+
 export async function createProjectAction(
   _prevState: ActionState = initialActionState,
   formData: FormData,
- ): Promise<ActionState> {
+): Promise<ActionState> {
   void _prevState;
   const name = String(formData.get("name") || "").trim();
 
@@ -43,7 +48,7 @@ export async function createProjectAction(
     revalidatePath("/tasks");
     redirect(`/projects/${project.id}`);
   } catch (error) {
-    if (error && typeof error === "object" && "digest" in error) {
+    if (isRedirectError(error)) {
       throw error;
     }
 
@@ -87,7 +92,7 @@ export async function createTaskAction(
     revalidatePath("/tasks");
     redirect(`/tasks/${task.id}`);
   } catch (error) {
-    if (error && typeof error === "object" && "digest" in error) {
+    if (isRedirectError(error)) {
       throw error;
     }
 
@@ -124,5 +129,38 @@ export async function generateFixPromptAction(taskId: string) {
     revalidatePath(`/tasks/${taskId}`);
   } catch {
     // no-op
+  }
+}
+
+export async function createGitHubIssueAction(
+  taskId: string,
+  _prevState: ActionState = initialActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  void _prevState;
+
+  const mode = String(formData.get("mode") || "create") as GitHubIssueMode;
+  if (!["create", "update", "recreate"].includes(mode)) {
+    return { success: false, message: "Invalid GitHub issue action mode." };
+  }
+
+  try {
+    const task = await createOrSyncGitHubIssue(taskId, mode);
+
+    revalidatePath("/");
+    revalidatePath("/tasks");
+    revalidatePath(`/projects/${task.project_id}`);
+    revalidatePath(`/tasks/${task.id}`);
+
+    const verb = mode === "update" ? "updated" : "created";
+    return {
+      success: true,
+      message: `GitHub issue ${verb} successfully: ${task.github_issue_url}`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to sync GitHub issue.",
+    };
   }
 }

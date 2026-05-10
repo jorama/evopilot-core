@@ -1,5 +1,7 @@
 import { generateFixPromptAction, updateTaskStatusAction } from "@/app/actions";
 import { EmptyState } from "@/components/empty-state";
+import { GitHubIssueControls } from "@/components/github-issue-controls";
+import { GitHubIssueStatusBadge } from "@/components/github-issue-status-badge";
 import { PageHeader } from "@/components/page-header";
 import { SeverityBadge } from "@/components/severity-badge";
 import { StatusBadge } from "@/components/status-badge";
@@ -28,6 +30,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <SeverityBadge severity={task.severity} />
           <StatusBadge status={task.status} />
+          <GitHubIssueStatusBadge status={task.github_issue_status} />
         </div>
 
         <dl className="grid gap-4 text-sm text-slate-700 md:grid-cols-2">
@@ -46,6 +49,31 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           <div>
             <dt className="font-semibold text-slate-900">Page URL</dt>
             <dd>{task.page_url || "Not provided"}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-slate-900">GitHub Repository</dt>
+            <dd>
+              {project?.github_owner && project?.github_repo
+                ? `${project.github_owner}/${project.github_repo}`
+                : "Not configured"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-slate-900">GitHub Issue</dt>
+            <dd>
+              {task.github_issue_url ? (
+                <a
+                  href={task.github_issue_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  #{task.github_issue_number} · Open in GitHub
+                </a>
+              ) : (
+                "Not created"
+              )}
+            </dd>
           </div>
         </dl>
 
@@ -102,6 +130,21 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               Update Status
             </button>
           </form>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">GitHub Issue Sync</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Create or update a GitHub issue from this task. Production deployment is never automated.
+        </p>
+
+        <div className="mt-4">
+          <GitHubIssueControls
+            taskId={task.id}
+            githubIssueUrl={task.github_issue_url}
+            githubIssueStatus={task.github_issue_status}
+          />
         </div>
       </section>
 

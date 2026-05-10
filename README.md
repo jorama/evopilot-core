@@ -1,6 +1,6 @@
-# EvoPilot v0.1
+# EvoPilot v0.2
 
-EvoPilot is a self-improving MVP autopilot that connects to projects, tracks issues as improvement tasks, generates safe repair prompts, and prepares PR-oriented execution (no auto-deploy).
+EvoPilot is a self-improving MVP autopilot that connects to projects, tracks issues as improvement tasks, generates safe repair prompts, and now creates GitHub issues from tasks (without auto-push or auto-deploy).
 
 ## Tech Stack
 
@@ -19,19 +19,47 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Optional for server-side privileged writes:
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# Required for GitHub issue creation (server-side only)
+GITHUB_TOKEN=your_github_personal_access_token
 ```
 
 If Supabase variables are not set, the app runs with an in-memory store for local demo/testing.
 
+## GitHub Token Setup
+
+1. In GitHub, create a Personal Access Token (classic or fine-grained).
+2. Grant permissions needed to manage repository issues and labels:
+   - **Issues: Read and write**
+   - **Metadata: Read-only**
+3. Add the token to `GITHUB_TOKEN` in `.env.local` (never expose it in client code).
+4. Restart your dev server.
+
 ## Database Setup (Supabase)
 
-Run the SQL migration in `supabase/migrations/0001_init.sql` against your Supabase Postgres database.
+Run SQL migrations in order:
 
-It creates:
+- `supabase/migrations/0001_init.sql`
+- `supabase/migrations/0002_github_issue_fields.sql`
+
+This creates:
 
 - `projects`
 - `improvement_tasks`
+- GitHub owner/repo fields on projects
+- GitHub issue tracking fields on improvement tasks
 - `updated_at` trigger for `improvement_tasks`
+
+## GitHub Issue Workflow
+
+On `/tasks/[id]`, use **Create GitHub Issue** to create a repo issue from task context.
+
+EvoPilot will:
+
+- parse `github_owner/github_repo` from project repo URL
+- create required labels if missing (`evopilot`, `severity:*`, `type:*`)
+- create/update/recreate issue safely
+- save issue URL, number, timestamp, and GitHub issue status back to task
+- prevent duplicate issue creation unless you choose Update or Recreate
 
 ## Run Locally
 
@@ -48,18 +76,18 @@ Open `http://localhost:3000`.
 - `/projects/new` — Add MVP
 - `/projects/[id]` — Project detail + linked tasks
 - `/projects/[id]/tasks/new` — Add issue/task
-- `/tasks` — Founder HQ all tasks + status updates
-- `/tasks/[id]` — Task detail + fix prompt generation
+- `/tasks` — Founder HQ all tasks + status updates + GitHub issue status/link
+- `/tasks/[id]` — Task detail + fix prompt generation + GitHub issue sync controls
 
 ## Safety Guardrail
 
-Generated fix prompts explicitly require:
+Generated fix prompts and GitHub issue body include safety reminders:
 
-- creating a new branch
-- running tests
-- running Playwright
-- opening a PR
-- **not auto-deploying to production**
+- create a new branch
+- do not modify unrelated files
+- run tests
+- open PR only
+- human approval required before deploy
 
 ## Testing
 
@@ -76,6 +104,15 @@ npm run lint
 npm run build
 npm run test:e2e
 ```
+
+## Integration Checklist (v0.2)
+
+- [ ] Create project with valid GitHub repo URL
+- [ ] Create task
+- [ ] Generate fix prompt
+- [ ] Click **Create GitHub Issue**
+- [ ] Verify task now shows GitHub issue URL + number + status=Created
+- [ ] Verify duplicate create is blocked and Update/Recreate paths are available
 
 ## Playwright Coverage
 

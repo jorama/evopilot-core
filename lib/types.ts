@@ -31,6 +31,8 @@ export type TaskStatus =
   | "Deployed"
   | "Rejected";
 
+export type GitHubIssueStatus = "Not Created" | "Created" | "Updated" | "Failed";
+
 export type Project = {
   id: string;
   name: string;
@@ -41,6 +43,8 @@ export type Project = {
   playwright_command: string;
   sentry_info: string;
   notes: string;
+  github_owner: string;
+  github_repo: string;
   created_at: string;
 };
 
@@ -60,6 +64,10 @@ export type ImprovementTask = {
   logs: string;
   screenshot_url: string;
   fix_prompt: string;
+  github_issue_url: string;
+  github_issue_number: number | null;
+  github_issue_created_at: string;
+  github_issue_status: GitHubIssueStatus;
   created_at: string;
   updated_at: string;
 };
@@ -72,3 +80,5 @@ export type ActionState = {
   success: boolean;
   message: string;
 };
+
+export type GitHubIssueMode = "create" | "update" | "recreate";

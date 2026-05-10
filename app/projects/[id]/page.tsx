@@ -18,6 +18,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   }
 
   const newestTask = tasks[0];
+  const tasksWithGitHubIssues = tasks.filter((task) => task.github_issue_url.trim()).length;
+  const tasksWithoutGitHubIssues = tasks.length - tasksWithGitHubIssues;
 
   return (
     <main className="space-y-6">
@@ -40,6 +42,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <div>
             <dt className="font-semibold text-slate-900">Health Score</dt>
             <dd>— Placeholder (coming soon)</dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-slate-900">GitHub owner/repo</dt>
+            <dd>
+              {project.github_owner && project.github_repo
+                ? `${project.github_owner}/${project.github_repo}`
+                : "Not configured"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-slate-900">GitHub issue coverage</dt>
+            <dd>
+              {tasksWithGitHubIssues} created · {tasksWithoutGitHubIssues} pending
+            </dd>
           </div>
         </dl>
 

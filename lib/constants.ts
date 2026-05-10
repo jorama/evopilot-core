@@ -1,4 +1,11 @@
-import type { Framework, Severity, TaskSource, TaskStatus, TaskType } from "./types";
+import type {
+  Framework,
+  GitHubIssueStatus,
+  Severity,
+  TaskSource,
+  TaskStatus,
+  TaskType,
+} from "./types";
 
 export const FRAMEWORK_OPTIONS: Framework[] = ["Next.js", "React", "Node", "Other"];
 export const TASK_TYPE_OPTIONS: TaskType[] = [
@@ -30,4 +37,11 @@ export const TASK_STATUS_OPTIONS: TaskStatus[] = [
   "Approved",
   "Deployed",
   "Rejected",
+];
+
+export const GITHUB_ISSUE_STATUS_OPTIONS: GitHubIssueStatus[] = [
+  "Not Created",
+  "Created",
+  "Updated",
+  "Failed",
 ];
