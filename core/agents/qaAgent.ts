@@ -10,10 +10,14 @@ export const qaAgent: AgentDefinition = {
   async execute(context) {
     const logs = String(context.payload?.logs ?? "");
     const normalizedLogs = logs.toLowerCase();
+    const hasTypeErrorSignal =
+      normalizedLogs.includes("typeerror") ||
+      normalizedLogs.includes("cannot read properties") ||
+      normalizedLogs.includes("is not a function");
     const failureType =
       normalizedLogs.includes("timeout") || normalizedLogs.includes("timed out")
         ? "timeout"
-        : normalizedLogs.includes("type")
+        : hasTypeErrorSignal
           ? "type-error"
           : "assertion";
 

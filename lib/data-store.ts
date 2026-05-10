@@ -154,8 +154,8 @@ async function publishEventSafely(event: {
 }) {
   try {
     await publishEvent(event);
-  } catch {
-    // no-op: core event bus should not block primary workflows
+  } catch (error) {
+    console.error("Failed to publish core event", event.event_type, error);
   }
 }
 

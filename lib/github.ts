@@ -92,8 +92,9 @@ async function githubRequest<T>(
       },
       cache: "no-store",
     });
-  } catch {
-    throw new Error("Network error while contacting GitHub API.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown network error";
+    throw new Error(`Network error while contacting GitHub API: ${message}`);
   }
 
   if (allowNotFound && response.status === 404) {

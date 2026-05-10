@@ -14,10 +14,14 @@ export async function getProjectContext(projectId?: string) {
   const scopedRuns = projectId
     ? runs.filter((run) => run.project_id === projectId)
     : runs;
+  const failureSignals = events.filter(
+    (event) => event.event_type.includes("failed") || event.event_type.includes("failure"),
+  );
 
-  const recentFailures = tasks.filter(
+  const highPriorityOpenTasks = tasks.filter(
     (task) => task.status !== "Deployed" && task.status !== "Rejected" && task.severity !== "Low",
   );
+  const recentFailures = highPriorityOpenTasks.slice(0, 10);
   const recentDeployments = tasks.filter((task) => task.status === "Deployed").slice(0, 10);
 
   return {
@@ -37,7 +41,7 @@ export async function getProjectContext(projectId?: string) {
         (task) => task.severity === "High" || task.severity === "Critical",
       ).length,
       deploymentCount: recentDeployments.length,
-      failureSignals: recentFailures.length,
+      failureSignals: failureSignals.length + recentFailures.length,
       agentRunCount: scopedRuns.length,
     },
     placeholders: {

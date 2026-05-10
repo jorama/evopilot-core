@@ -120,8 +120,8 @@ export async function updateTaskStatusAction(taskId: string, formData: FormData)
     revalidatePath("/tasks");
     revalidatePath("/hq");
     revalidatePath(`/tasks/${taskId}`);
-  } catch {
-    // no-op
+  } catch (error) {
+    console.error("Failed to update task status", taskId, error);
   }
 }
 
@@ -133,8 +133,8 @@ export async function generateFixPromptAction(taskId: string) {
     revalidatePath("/hq");
     revalidatePath(`/projects/${task.project_id}`);
     revalidatePath(`/tasks/${taskId}`);
-  } catch {
-    // no-op
+  } catch (error) {
+    console.error("Failed to generate fix prompt", taskId, error);
   }
 }
 
@@ -180,8 +180,8 @@ export async function toggleAgentEnabledAction(agentId: string, formData: FormDa
     revalidatePath("/agents");
     revalidatePath(`/agents/${agentId}`);
     revalidatePath("/hq");
-  } catch {
-    // no-op
+  } catch (error) {
+    console.error("Failed to toggle agent enabled state", agentId, error);
   }
 }
 
@@ -191,7 +191,7 @@ export async function runAgentAction(agentId: string) {
     revalidatePath("/agents");
     revalidatePath(`/agents/${agentId}`);
     revalidatePath("/hq");
-  } catch {
-    // no-op
+  } catch (error) {
+    console.error("Failed to run agent", agentId, error);
   }
 }
