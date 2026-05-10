@@ -37,9 +37,9 @@ test("founder workflow: add mvp, add task, generate prompt, change status, view 
 
   await page.getByLabel("status").selectOption("Investigating");
   await page.getByRole("button", { name: "Update Status" }).click();
-  await expect(page.getByText("Investigating")).toBeVisible();
+  await expect(page.locator("span", { hasText: "Investigating" }).first()).toBeVisible();
 
   await page.getByRole("link", { name: "Dashboard" }).click();
-  await expect(page.getByText("Connected MVPs")).toBeVisible();
-  await expect(page.getByText("Open Issues")).toBeVisible();
+  await expect(page.locator("p", { hasText: "Connected MVPs" }).first()).toBeVisible();
+  await expect(page.locator("p", { hasText: "Open Issues" }).first()).toBeVisible();
 });

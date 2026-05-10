@@ -19,7 +19,8 @@ const initialActionState: ActionState = {
 export async function createProjectAction(
   _prevState: ActionState = initialActionState,
   formData: FormData,
-): Promise<ActionState> {
+ ): Promise<ActionState> {
+  void _prevState;
   const name = String(formData.get("name") || "").trim();
 
   if (!name) {
@@ -42,6 +43,10 @@ export async function createProjectAction(
     revalidatePath("/tasks");
     redirect(`/projects/${project.id}`);
   } catch (error) {
+    if (error && typeof error === "object" && "digest" in error) {
+      throw error;
+    }
+
     return {
       success: false,
       message: error instanceof Error ? error.message : "Unable to create project.",
@@ -54,6 +59,7 @@ export async function createTaskAction(
   _prevState: ActionState = initialActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  void _prevState;
   const title = String(formData.get("title") || "").trim();
 
   if (!title) {
@@ -81,6 +87,10 @@ export async function createTaskAction(
     revalidatePath("/tasks");
     redirect(`/tasks/${task.id}`);
   } catch (error) {
+    if (error && typeof error === "object" && "digest" in error) {
+      throw error;
+    }
+
     return {
       success: false,
       message: error instanceof Error ? error.message : "Unable to create task.",
