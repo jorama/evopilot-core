@@ -313,7 +313,7 @@ export async function getDashboardSummary() {
     connectedMVPs: projects.length,
     openIssues: tasks.filter((task) => task.status !== "Deployed" && task.status !== "Rejected")
       .length,
-    fixPromptsGenerated: tasks.filter((task) => task.fix_prompt?.trim()).length,
+    fixPromptsGenerated: tasks.filter((task) => task.fix_prompt.trim()).length,
     prsReady: tasks.filter((task) => task.status === "PR Ready").length,
   };
 }
