@@ -1,3 +1,4 @@
+import { publishEvent } from "@/core/events/event-bus";
 import { buildIssueBody, buildIssueLabels, buildIssueTitle, createGitHubIssue, ensureRepoLabels, updateGitHubIssue } from "./github";
 import { buildFixPrompt } from "./fix-prompt";
 import { createSupabaseServerClient, isSupabaseConfigured } from "./supabase";
@@ -144,6 +145,20 @@ function assertRepoConfigured(project: Project) {
   }
 }
 
+async function publishEventSafely(event: {
+  event_type: string;
+  source_agent: string;
+  project_id?: string;
+  task_id?: string;
+  payload?: Record<string, unknown>;
+}) {
+  try {
+    await publishEvent(event);
+  } catch {
+    // no-op: core event bus should not block primary workflows
+  }
+}
+
 export async function listProjects() {
   if (isSupabaseConfigured) {
     const supabase = createSupabaseServerClient();
@@ -274,11 +289,38 @@ export async function createTask(input: Partial<ImprovementTask>) {
       .single();
 
     if (error) throw new Error(error.message);
-    return normalizeTask(data);
+
+    const task = normalizeTask(data);
+    await publishEventSafely({
+      event_type: "task.created",
+      source_agent: "system",
+      project_id: task.project_id,
+      task_id: task.id,
+      payload: {
+        title: task.title,
+        severity: task.severity,
+        type: task.type,
+      },
+    });
+
+    return task;
   }
 
   const store = getMemoryStore();
   store.tasks.unshift(payload);
+
+  await publishEventSafely({
+    event_type: "task.created",
+    source_agent: "system",
+    project_id: payload.project_id,
+    task_id: payload.id,
+    payload: {
+      title: payload.title,
+      severity: payload.severity,
+      type: payload.type,
+    },
+  });
+
   return payload;
 }
 
@@ -309,7 +351,16 @@ export async function updateTaskStatus(id: string, status: TaskStatus) {
       .single();
 
     if (error) throw new Error(error.message);
-    return normalizeTask(data);
+
+    const task = normalizeTask(data);
+    await publishEventSafely({
+      event_type: "task.updated",
+      source_agent: "system",
+      project_id: task.project_id,
+      task_id: task.id,
+      payload: { status: task.status },
+    });
+    return task;
   }
 
   const store = getMemoryStore();
@@ -324,6 +375,14 @@ export async function updateTaskStatus(id: string, status: TaskStatus) {
     status,
     updated_at: new Date().toISOString(),
   };
+
+  await publishEventSafely({
+    event_type: "task.updated",
+    source_agent: "system",
+    project_id: store.tasks[index].project_id,
+    task_id: store.tasks[index].id,
+    payload: { status: store.tasks[index].status },
+  });
 
   return store.tasks[index];
 }
@@ -356,7 +415,19 @@ export async function generateAndSaveFixPrompt(taskId: string) {
       .single();
 
     if (error) throw new Error(error.message);
-    return normalizeTask(data);
+
+    const updatedTask = normalizeTask(data);
+    await publishEventSafely({
+      event_type: "task.updated",
+      source_agent: "system",
+      project_id: updatedTask.project_id,
+      task_id: updatedTask.id,
+      payload: {
+        status: updatedTask.status,
+      },
+    });
+
+    return updatedTask;
   }
 
   const store = getMemoryStore();
@@ -440,7 +511,19 @@ export async function createOrSyncGitHubIssue(taskId: string, mode: GitHubIssueM
       .single();
 
     if (error) throw new Error(error.message);
-    return normalizeTask(data);
+    const updatedTask = normalizeTask(data);
+    await publishEventSafely({
+      event_type: mode === "update" ? "issue.updated" : "issue.created",
+      source_agent: "system",
+      project_id: updatedTask.project_id,
+      task_id: updatedTask.id,
+      payload: {
+        url: updatedTask.github_issue_url,
+        issueNumber: updatedTask.github_issue_number,
+      },
+    });
+
+    return updatedTask;
   }
 
   const store = getMemoryStore();
@@ -458,6 +541,17 @@ export async function createOrSyncGitHubIssue(taskId: string, mode: GitHubIssueM
     github_issue_status: githubIssueStatus,
     updated_at: new Date().toISOString(),
   };
+
+  await publishEventSafely({
+    event_type: mode === "update" ? "issue.updated" : "issue.created",
+    source_agent: "system",
+    project_id: store.tasks[index].project_id,
+    task_id: store.tasks[index].id,
+    payload: {
+      url: store.tasks[index].github_issue_url,
+      issueNumber: store.tasks[index].github_issue_number,
+    },
+  });
 
   return store.tasks[index];
 }

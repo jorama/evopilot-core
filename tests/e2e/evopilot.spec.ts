@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("founder workflow: add mvp, add task, generate prompt, change status, view dashboard", async ({
-  page,
-}) => {
+test("founder workflow: tasks plus platform architecture pages", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Founder HQ" })).toBeVisible();
 
@@ -42,4 +40,12 @@ test("founder workflow: add mvp, add task, generate prompt, change status, view 
   await page.getByRole("link", { name: "Dashboard" }).click();
   await expect(page.locator("p", { hasText: "Connected MVPs" }).first()).toBeVisible();
   await expect(page.locator("p", { hasText: "Open Issues" }).first()).toBeVisible();
+
+  await page.getByRole("link", { name: "HQ" }).click();
+  await expect(page.getByRole("heading", { name: "Founder Intelligence HQ" })).toBeVisible();
+  await expect(page.getByText("Agent Activity Feed")).toBeVisible();
+
+  await page.getByRole("link", { name: "Agents" }).click();
+  await expect(page.getByRole("heading", { name: "Agent Registry" })).toBeVisible();
+  await expect(page.getByText("Builder Agent")).toBeVisible();
 });

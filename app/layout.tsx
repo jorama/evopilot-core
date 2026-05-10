@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "EvoPilot",
-  description: "Founder autopilot for MVP improvement workflows",
+  description: "AI operating system for startup execution workflows",
 };
 
 export default function RootLayout({
@@ -20,9 +20,11 @@ export default function RootLayout({
             <Link href="/" className="text-lg font-semibold">
               EvoPilot
             </Link>
-            <nav className="flex items-center gap-4 text-sm font-medium text-slate-700">
+            <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-700">
               <Link href="/">Dashboard</Link>
-              <Link href="/tasks">Founder HQ Tasks</Link>
+              <Link href="/hq">HQ</Link>
+              <Link href="/agents">Agents</Link>
+              <Link href="/tasks">Tasks</Link>
               <Link href="/projects/new">Add MVP</Link>
             </nav>
           </header>

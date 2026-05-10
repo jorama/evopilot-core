@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { runRegisteredAgent } from "@/core/runtime/agentRunner";
 import { TASK_STATUS_OPTIONS } from "@/lib/constants";
+import { updateAgentEnabled } from "@/lib/core-store";
 import {
   createOrSyncGitHubIssue,
   createProject,
@@ -46,6 +48,7 @@ export async function createProjectAction(
 
     revalidatePath("/");
     revalidatePath("/tasks");
+    revalidatePath("/hq");
     redirect(`/projects/${project.id}`);
   } catch (error) {
     if (isRedirectError(error)) {
@@ -90,6 +93,7 @@ export async function createTaskAction(
     revalidatePath("/");
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/tasks");
+    revalidatePath("/hq");
     redirect(`/tasks/${task.id}`);
   } catch (error) {
     if (isRedirectError(error)) {
@@ -114,6 +118,7 @@ export async function updateTaskStatusAction(taskId: string, formData: FormData)
     await updateTaskStatus(taskId, status as never);
     revalidatePath("/");
     revalidatePath("/tasks");
+    revalidatePath("/hq");
     revalidatePath(`/tasks/${taskId}`);
   } catch {
     // no-op
@@ -125,6 +130,7 @@ export async function generateFixPromptAction(taskId: string) {
     const task = await generateAndSaveFixPrompt(taskId);
     revalidatePath("/");
     revalidatePath("/tasks");
+    revalidatePath("/hq");
     revalidatePath(`/projects/${task.project_id}`);
     revalidatePath(`/tasks/${taskId}`);
   } catch {
@@ -149,6 +155,7 @@ export async function createGitHubIssueAction(
 
     revalidatePath("/");
     revalidatePath("/tasks");
+    revalidatePath("/hq");
     revalidatePath(`/projects/${task.project_id}`);
     revalidatePath(`/tasks/${task.id}`);
 
@@ -162,5 +169,29 @@ export async function createGitHubIssueAction(
       success: false,
       message: error instanceof Error ? error.message : "Failed to sync GitHub issue.",
     };
+  }
+}
+
+export async function toggleAgentEnabledAction(agentId: string, formData: FormData) {
+  const enabled = String(formData.get("enabled") || "") === "true";
+
+  try {
+    await updateAgentEnabled(agentId, enabled);
+    revalidatePath("/agents");
+    revalidatePath(`/agents/${agentId}`);
+    revalidatePath("/hq");
+  } catch {
+    // no-op
+  }
+}
+
+export async function runAgentAction(agentId: string) {
+  try {
+    await runRegisteredAgent(agentId, {});
+    revalidatePath("/agents");
+    revalidatePath(`/agents/${agentId}`);
+    revalidatePath("/hq");
+  } catch {
+    // no-op
   }
 }
