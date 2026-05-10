@@ -12,10 +12,6 @@ type Store = {
   tasks: ImprovementTask[];
 };
 
-declare global {
-  var __evopilotStore: Store | undefined;
-}
-
 const defaultProjectValues = {
   repo_url: "",
   production_url: "",
@@ -41,12 +37,10 @@ const defaultTaskValues = {
   fix_prompt: "",
 } as const;
 
-function getMemoryStore() {
-  if (!global.__evopilotStore) {
-    global.__evopilotStore = { projects: [], tasks: [] };
-  }
+const memoryStore: Store = { projects: [], tasks: [] };
 
-  return global.__evopilotStore;
+function getMemoryStore() {
+  return memoryStore;
 }
 
 function normalizeProject(row: Partial<Project>): Project {
